@@ -1,17 +1,17 @@
 import {Memento} from 'vscode'
 
-export interface Csproj {
+export interface Vsproj {
     fsPath: string
     name: string
     xml: XML
 }
 
-export interface CsprojAndFile {
-    csproj: Csproj
+export interface VsprojAndFile {
+    vsproj: Vsproj
     filePath: string
 }
 
-export interface ActionArgs extends CsprojAndFile {
+export interface ActionArgs extends VsprojAndFile {
     fileName: string
     bulkMode: boolean
     globalState: Memento
