@@ -5,7 +5,11 @@ This is useful if you work in a team that uses both VS Code and Visual Studio.
 
 This extension updates TFS status when a file is added (to couple with TFS extension to detect file update)
 
-* [TFS extension](https://marketplace.visualstudio.com/items?itemName=ivangabriele.vscode-tfs)
+* [Install TFS extension](https://marketplace.visualstudio.com/items?itemName=ivangabriele.vscode-tfs)
+
+## /!\ /!\ /!\
+
+Extension do not update TFS status when file is removed (do it with VS)
 
 ## FORK FROM :
 
