@@ -3,6 +3,7 @@ import * as fs from 'mz/fs'
 import * as path from 'path'
 
 import { Vsproj, XML } from './types'
+import { sourceControl } from "./source-control";
 const { workspace } = vscode
 
 const etree = require('@azz/elementtree')
@@ -22,7 +23,7 @@ export async function getPath(fileDir: string, walkUp = true): Promise<string> {
 
    const projExt = getProjExtension();
    const files = await fs.readdir(fileDir)
-   const vsproj = files.find((file:any) => file.endsWith(`.${projExt}`))
+   const vsproj = files.find((file: any) => file.endsWith(`.${projExt}`))
    if (vsproj)
       return path.resolve(fileDir, vsproj)
    if (walkUp) {
@@ -55,11 +56,11 @@ export function addFile(vsproj: Vsproj, filePath: string, itemType: string) {
    itemElement.set('Include', relativeTo(vsproj, filePath))
 }
 
-export function removeFile(vsproj: Vsproj, filePath: string, directory = false): boolean {
+export async function removeFile(vsproj: Vsproj, filePath: string, directory = false): Promise<boolean> {
    const root = vsproj.xml.getroot()
    const filePathRel = relativeTo(vsproj, filePath)
    const itemGroups = root.findall('./ItemGroup')
-   const found = itemGroups.some(itemGroup => {
+   const found: boolean = itemGroups.some(itemGroup => {
       const elements = directory
          ? itemGroup.findall(`./*[@Include]`).filter(element => element.attrib['Include'].startsWith(filePathRel))
          : itemGroup.findall(`./*[@Include='${filePathRel}']`)
@@ -68,7 +69,9 @@ export function removeFile(vsproj: Vsproj, filePath: string, directory = false):
       }
       return elements.length > 0
    })
-   return found
+   //Should remove file from source control, but not... to complicated for now
+   await sourceControl.remove(filePath);
+   return found;
 }
 
 async function readFile(path: string): Promise<string> {
@@ -76,16 +79,23 @@ async function readFile(path: string): Promise<string> {
 }
 
 export async function persist(vsproj: Vsproj, indent = 2) {
-   const xmlString = vsproj.xml.write({ indent })
+   //On encode en windows-1252 pour que le checker GIRO soit content
+   const xmlString = vsproj.xml.write({ indent, encoding: "Windows-1252" })
 
-   // Add byte order mark.
-   const xmlFinal = ('\ufeff' + xmlString)
+   // Add byte order mark if encoding utf8 : '\ufeff'
+   const xmlFinal = (xmlString)
+      //Erreur sur ce replace, en a-t-on vraiment besoin ?
       // .replace(/(?<!\r)>\n/g, '\r\n') // use CRLF
       .replace(/(\r)?(\n)+$/, '') // no newline at end of file
 
+   //Suppression du flag read-only de VS sur ce fichier
    await fs.chmod(vsproj.fsPath, "777");
 
-   await fs.writeFile(vsproj.fsPath, xmlFinal)
+   //On encode en ascii pour que le checker GIRO soit content
+   await fs.writeFile(vsproj.fsPath, xmlFinal, { encoding: "ascii" })
+
+   //Add file to source control, it has been modified !
+   await sourceControl.update(vsproj.fsPath);
 
    // Ensure that that cached XML is up-to-date
    _cacheXml[vsproj.fsPath] = vsproj.xml

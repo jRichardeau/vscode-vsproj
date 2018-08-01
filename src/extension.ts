@@ -7,6 +7,7 @@ import * as path from 'path'
 import { VsprojAndFile, Vsproj, ActionArgs, ItemType } from './types'
 import * as VsprojUtil from './vsproj'
 import * as StatusBar from './statusbar'
+import { sourceControl } from "./source-control";
 
 const { window, commands, workspace } = vscode
 const debounce = require('lodash.debounce')
@@ -163,6 +164,8 @@ const pickActions = {
          StatusBar.displayItem(vsproj.name, true)
          // window.showInformationMessage(`Added ${fileName} to ${csproj.name}`)
       }
+      //Add file to source control
+      await sourceControl.add(filePath);
 
       return true
    },
@@ -306,7 +309,7 @@ async function vsprojRemoveCommand(
    if (!vsproj) return
 
    try {
-      const removed = VsprojUtil.removeFile(vsproj, fsPath, wasDir)
+      const removed = await VsprojUtil.removeFile(vsproj, fsPath, wasDir)
       await VsprojUtil.persist(vsproj)
       if (!removed && !bulkMode) {
          window.showWarningMessage(`${fileName} was not found in ${vsproj.name}`)
