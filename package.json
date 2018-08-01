@@ -1,9 +1,9 @@
 {
-   "name": "vscode-vsproj",
-   "displayName": "VS Code .*proj",
-   "description": "Add/remove files from .*proj.",
-   "version": "0.7.0",
-   "publisher": "jrichardeau",
+   "name": "vscode-vsproj-tfs",
+   "displayName": "VS Code .*proj + TFS",
+   "description": "Add/remove files from .*proj and TFS",
+   "version": "0.0.1",
+   "publisher": "jRichardeau",
    "engines": {
       "vscode": "^1.5.0"
    },
@@ -19,7 +19,7 @@
       "commands": [
          {
             "command": "extension.vsproj.add",
-            "title": "vsproj: Include in Project"
+            "title": "vsproj: Include in Project + TFS"
          },
          {
             "command": "extension.vsproj.remove",
@@ -51,9 +51,10 @@
                ],
                "default": {
                   "*": "Content",
+                  "*.js": "Compile",
                   ".ts": "TypeScriptCompile"
                },
-               "description": "Type of XML element to put in the csproj file."
+               "description": "Type of XML element to put in the vsproj file."
             },
             "vsproj.includeRegex": {
                "type": [
