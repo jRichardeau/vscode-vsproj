@@ -1,9 +1,7 @@
-import * as vscode from 'vscode'
 import * as fs from 'mz/fs'
 import * as path from 'path'
 
 import { Vsproj, XML } from './types'
-const { workspace } = vscode
 
 const etree = require('@azz/elementtree')
 const stripBom = require('strip-bom')
@@ -12,26 +10,21 @@ export class NoVsprojError extends Error { }
 
 let _cacheXml: { [path: string]: XML } = Object.create(null)
 
-const getProjExtension = (): string => {
-   return workspace.getConfiguration("vsproj").get<string>('projExtension', 'njsproj');
-}
-
-export async function getPath(fileDir: string, walkUp = true): Promise<string> {
+export async function getPath(fileDir: string, projectFileExtension: string, walkUp = true): Promise<string> {
    if (!path.isAbsolute(fileDir))
       fileDir = path.resolve(fileDir)
 
-   const projExt = getProjExtension();
    const files = await fs.readdir(fileDir)
-   const vsproj = files.find((file:any) => file.endsWith(`.${projExt}`))
+   const vsproj = files.find((file:any) => file.endsWith(`.${projectFileExtension}`))
    if (vsproj)
       return path.resolve(fileDir, vsproj)
    if (walkUp) {
       const parent = path.resolve(fileDir, '..')
       if (parent === fileDir)
-         throw new NoVsprojError(`Reached fs root, no ${projExt} found`)
-      return getPath(parent)
+         throw new NoVsprojError(`Reached fs root, no ${projectFileExtension} found`)
+      return getPath(parent, projectFileExtension)
    }
-   throw new NoVsprojError(`No ${projExt} found in current directory: ${fileDir}`)
+   throw new NoVsprojError(`No ${projectFileExtension} found in current directory: ${fileDir}`)
 }
 
 export function hasFile(vsproj: Vsproj, filePath: string) {
@@ -91,8 +84,8 @@ export async function persist(vsproj: Vsproj, indent = 2) {
    _cacheXml[vsproj.fsPath] = vsproj.xml
 }
 
-export async function forFile(filePath: string): Promise<Vsproj> {
-   const fsPath = await getPath(path.dirname(filePath))
+export async function forFile(filePath: string, projectFileExtension: string): Promise<Vsproj> {
+   const fsPath = await getPath(path.dirname(filePath), projectFileExtension)
    const name = path.basename(fsPath)
    const xml = await load(fsPath)
    return { fsPath, name, xml }

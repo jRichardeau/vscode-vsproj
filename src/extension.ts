@@ -86,6 +86,10 @@ function getConfig() {
    return workspace.getConfiguration("vsproj")
 }
 
+const getProjExtension = (): string => {
+   return getConfig().get<string>('projExtension', 'njsproj');
+}
+
 async function vsprojCommand(
    this: vscode.ExtensionContext,
    // Use file path from context or fall back to active document
@@ -95,9 +99,7 @@ async function vsprojCommand(
 ): Promise<Vsproj | void> {
    if (!fsPath) return
 
-   const config = getConfig()
-
-   const projExt = config.get<string>('projExtension', 'njsproj')
+   const projExt = getProjExtension();
 
    // Skip if we're saving a *proj file, or we are a standalone file without a path.
    if (fsPath.endsWith(`.${projExt}`) || !/(\/|\\)/.test(fsPath))
@@ -111,7 +113,8 @@ async function vsprojCommand(
    console.log(`extension.vsproj#trigger(${fileName})`)
 
    try {
-      const vsproj = await VsprojUtil.forFile(fsPath)
+      const vsproj = await getVsprojForFile(fsPath)
+      if (!vsproj) return;
 
       if (VsprojUtil.hasFile(vsproj, fsPath)) {
          StatusBar.displayItem(vsproj.name, true)
@@ -205,7 +208,8 @@ function wasDirectory(fsPath: string) {
 
 async function handleFileDeletion({ fsPath }: vscode.Uri) {
    try {
-      const vsproj = await VsprojUtil.forFile(fsPath)
+      const vsproj = await getVsprojForFile(fsPath)
+      if (!vsproj) return;
       if (!wasDirectory(fsPath) && !VsprojUtil.hasFile(vsproj, fsPath))
          return
 
@@ -319,7 +323,8 @@ async function vsprojRemoveCommand(
 
 async function getVsprojForFile(fsPath: string) {
    try {
-      return await VsprojUtil.forFile(fsPath)
+      const projExt = getProjExtension();
+      return await VsprojUtil.forFile(fsPath, projExt);
    } catch (err) {
       if (err instanceof VsprojUtil.NoVsprojError) {
          const fileName = path.basename(fsPath)
