@@ -5,7 +5,7 @@
    "version": "0.0.1",
    "publisher": "jRichardeau",
    "engines": {
-      "vscode": "^1.5.0"
+      "vscode": "^1.30.0"
    },
    "categories": [
       "Other"
@@ -13,6 +13,7 @@
    "activationEvents": [
       "*"
    ],
+   "keywords": ["multi-root ready"],
    "icon": "img/icon.png",
    "main": "./out/src/extension",
    "contributes": {
@@ -69,7 +70,7 @@
                   "string",
                   "null"
                ],
-               "default": null,
+               "default": "node_modules",
                "description": "A regular expression to exclude file paths by."
             },
             "vsproj.silentDeletion": {
@@ -109,7 +110,7 @@
       "mock-fs": "^4.5.0",
       "sinon": "^1.17.6",
       "typescript": "^2.0.6",
-      "vscode": "^1.0.0"
+      "vscode": "^1.1.27"
    },
    "license": "MIT",
    "repository": {

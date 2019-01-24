@@ -4,10 +4,10 @@ import * as vscode from 'vscode'
 import * as fs from 'mz/fs'
 import * as path from 'path'
 
-import { VsprojAndFile, Vsproj, ActionArgs, ItemType } from './types'
+import { Vsproj, ActionArgs, ItemType } from './types'
 import * as VsprojUtil from './vsproj'
 import * as StatusBar from './statusbar'
-import { sourceControl } from "./source-control";
+// import { sourceControl } from "./source-control";
 
 const { window, commands, workspace } = vscode
 const debounce = require('lodash.debounce')
@@ -15,49 +15,68 @@ const debounce = require('lodash.debounce')
 const [YES, NO, NEVER] = ['Yes', 'Not Now', 'Never For This File']
 const _debounceDeleteTime = 2000
 
-let _vsprojRemovals: VsprojAndFile[] = []
+let _vsprojRemovals: string[] = []
+let workspaceParentFolders: string[];
 
 export function activate(context: vscode.ExtensionContext) {
-   const config = getConfig()
+   const config = getGlobalConfig()
+   //Gobal activation
    if (!config.get<boolean>('enabled', true))
-      return
+      return;
+
+   //Workspace activation
+   if (!config.get<boolean>('activate', false))
+      return;
 
    const projExt = config.get<string>('projExtension', 'njsproj')
 
-   console.log('extension.vsproj#activate for', projExt)
+   console.log('extension.vsproj#activate for', projExt);
 
-   const vsprojWatcher = workspace.createFileSystemWatcher(`**/*.${projExt}`)
+   const vsprojWatcher = workspace.createFileSystemWatcher(`**/*.${ projExt }`)
    const deleteFileWatcher = workspace.createFileSystemWatcher('**/*', true, true, false)
+   const createAndChangeFileWatcher = workspace.createFileSystemWatcher('**/*', false, false, true)
 
    context.subscriptions.push(
       commands.registerCommand('extension.vsproj.add',
-         vsprojCommand.bind(context)),
+         vsprojAddCommand.bind(context)),
       commands.registerCommand('extension.vsproj.remove',
          vsprojRemoveCommand.bind(context)),
       commands.registerCommand('extension.vsproj.clearIgnoredPaths',
          clearIgnoredPathsCommand.bind(context)),
 
       workspace.onDidSaveTextDocument(async (e: vscode.TextDocument) => {
-         if (ignoreEvent(context, e.uri)) return
+         if (ignoreEvent(context, e.uri)) return;
 
-         await commands.executeCommand('extension.vsproj.add',
-            e.uri, true)
+         await commands.executeCommand('extension.vsproj.add', e.uri);
       }),
 
       window.onDidChangeActiveTextEditor(async (e: vscode.TextEditor) => {
          if (!e) return
 
-         StatusBar.hideItem()
-         if (ignoreEvent(context, e.document.uri)) return
+         if (ignoreEvent(context, e.document.uri)) return;
 
-         await commands.executeCommand('extension.vsproj.add',
-            e.document.uri, true)
+         await commands.executeCommand('extension.vsproj.add', e.document.uri);
       }),
 
-      vsprojWatcher.onDidChange(uri => {
+      vsprojWatcher.onDidChange((uri: vscode.Uri) => {
          // Clear cache entry if file is modified
-         VsprojUtil.invalidate(uri.fsPath)
+         VsprojUtil.invalidate(uri.fsPath);
       }),
+
+      createAndChangeFileWatcher.onDidCreate(async (uri: vscode.Uri) => {
+         if (ignoreEvent(context, uri)) return;
+         await commands.executeCommand('extension.vsproj.add', uri);
+      }),
+
+      createAndChangeFileWatcher.onDidChange(async (uri: vscode.Uri) => {
+         if (ignoreEvent(context, uri)) return;
+         const isFileExisting = await fileExists(uri.fsPath);
+         if (!isFileExisting) {
+            //File has been renamed, so remove it
+            await commands.executeCommand('extension.vsproj.remove', uri);
+         }
+      }),
+
 
       deleteFileWatcher.onDidDelete(handleFileDeletion),
 
@@ -65,6 +84,22 @@ export function activate(context: vscode.ExtensionContext) {
 
       StatusBar.createItem()
    )
+}
+
+function getWorkspaceParentFolders() {
+   if (workspaceParentFolders) {
+      return (workspaceParentFolders);
+   }
+   workspaceParentFolders = [];
+   if (!workspace.workspaceFolders || workspace.workspaceFolders.length === 0) {
+      return (workspaceParentFolders);
+   }
+
+   workspace.workspaceFolders.forEach(f => {
+      workspaceParentFolders.push(path.resolve(f.uri.fsPath, '..'));
+   });
+
+   return (workspaceParentFolders);
 }
 
 export function deactivate() {
@@ -75,83 +110,80 @@ export function deactivate() {
 
 function ignoreEvent(context: vscode.ExtensionContext, uri: vscode.Uri) {
    if (!isDesiredFile(context.globalState, uri.fsPath))
-      return true
+      return true;
 
-   if (StatusBar.isVisible())
-      return true
-
-   return false
+   return false;
 }
 
-function getConfig() {
-   return workspace.getConfiguration("vsproj")
+function getGlobalConfig() {
+   return workspace.getConfiguration("vsproj");
 }
 
 const getProjExtension = (): string => {
-   return getConfig().get<string>('projExtension', 'njsproj');
+   return getGlobalConfig().get<string>('projExtension', 'njsproj');
 }
 
-async function vsprojCommand(
+async function vsprojAddCommand(
    this: vscode.ExtensionContext,
    // Use file path from context or fall back to active document
-   { fsPath }: vscode.Uri = window.activeTextEditor.document.uri,
-   promptAction = false,
+   uri: vscode.Uri | null = window.activeTextEditor ? window.activeTextEditor.document.uri : null,
    bulkMode = false
 ): Promise<Vsproj | void> {
-   if (!fsPath) return
+   if (!uri || !uri.fsPath) return
+
+   const fsPath = uri.fsPath;
 
    const projExt = getProjExtension();
 
    // Skip if we're saving a *proj file, or we are a standalone file without a path.
-   if (fsPath.endsWith(`.${projExt}`) || !/(\/|\\)/.test(fsPath))
+   if (fsPath.endsWith(`.${ projExt }`) || !/(\/|\\)/.test(fsPath))
       return
 
-   if (fs.lstatSync(fsPath).isDirectory()) {
+   if (isDirectory(fsPath)) {
       return await vsprojAddDirectory.call(this, fsPath)
    }
 
+   return await processAddCommand.call(this, fsPath, bulkMode);
+}
+
+async function processAddCommand(
+   this: vscode.ExtensionContext,
+   // Use file path from context or fall back to active document
+   fsPath: string,
+   bulkMode = false) {
+
    const fileName = path.basename(fsPath)
-   console.log(`extension.vsproj#trigger(${fileName})`)
+   console.log(`extension.vsproj#trigger(${ fileName })#add`)
 
    try {
-      const vsproj = await getVsprojForFile(fsPath)
+      const vsproj = await getVsprojForFile(fsPath);
       if (!vsproj) return;
 
       if (VsprojUtil.hasFile(vsproj, fsPath)) {
-         StatusBar.displayItem(vsproj.name, true)
-         if (!promptAction && !bulkMode) {
-            window.showWarningMessage(`${fileName} is already in ${vsproj.name}`)
-         }
-         console.log(`extension.vsproj#trigger(${fileName}): already in .${projExt}`)
-         return
+         console.log(`extension.vsproj#trigger(${ fileName }): already in proj file`)
+         return;
       }
 
-      let pickResult = (promptAction === true)
-         ? await window.showInformationMessage(
-            `${fileName} is not in ${vsproj.name}, would you like to add it?`,
-            YES, NEVER)
-         : YES
-
       // Default to "No" action if user blurs the picker
-      const added = await (pickActions[pickResult] || pickActions[NO])({
+      const added = await (pickActions[YES])({
          filePath: fsPath,
          fileName,
          bulkMode,
          vsproj,
          globalState: this.globalState
-      })
+      });
 
-      if (added) return vsproj
+      if (added) return vsproj;
 
    } catch (err) {
       if (!(err instanceof VsprojUtil.NoVsprojError)) {
          window.showErrorMessage(err.toString())
          console.trace(err)
       } else {
-         console.log(`extension.vsproj#trigger(${fileName}): no .${projExt} found`)
+         console.log(`extension.vsproj#trigger(${ fileName }): no project file found`)
       }
    }
-}
+};
 
 const pickActions = {
    async [YES]({ filePath, fileName, vsproj, bulkMode }: ActionArgs) {
@@ -164,36 +196,49 @@ const pickActions = {
       VsprojUtil.addFile(vsproj, filePath, getTypeForFile(fileName, itemType))
       if (!bulkMode) {
          await VsprojUtil.persist(vsproj)
-         StatusBar.displayItem(vsproj.name, true)
-         // window.showInformationMessage(`Added ${fileName} to ${csproj.name}`)
       }
       //Add file to source control
-      await sourceControl.add(filePath);
+      // await sourceControl.add(filePath);
 
-      return true
+      return true;
    },
    [NO]({ vsproj }: ActionArgs) {
-      StatusBar.displayItem(vsproj.name, false)
+      StatusBar.displayItem(vsproj.name, false);
+      return false;
    },
    async [NEVER]({ filePath, globalState, fileName }: ActionArgs) {
       await updateIgnoredPaths(globalState, filePath)
 
       StatusBar.hideItem()
       window.showInformationMessage(
-         `Added ${fileName} to ignore list, to clear list, ` +
-         `run the "vsproj: Clear ignored paths"`)
+         `Added ${ fileName } to ignore list, to clear list, ` +
+         `run the "vsproj: Clear ignored paths"`);
+      return false;
    }
 }
 
 async function vsprojAddDirectory(this: vscode.ExtensionContext, fsPath: string) {
    const changedVsprojs: Vsproj[] = []
 
-   const files = await workspace.findFiles(
-      path.join(workspace.asRelativePath(fsPath), '**/*'),
-      ''
-   )
+   if (!isDesiredFile(this.globalState, fsPath)) {
+      return;
+   }
+
+   const relativePattern = new vscode.RelativePattern(fsPath, '**/*');
+
+   const files = await workspace.findFiles(relativePattern, '**/node_modules/**');
+
+   const hasFiles = files.length > 0;
+
+   //Add directory itself
+   let vsproj: Vsproj = await processAddCommand.call(this, fsPath, false, hasFiles);
+   if (vsproj) {
+      changedVsprojs.push(vsproj);
+   }
+
+   //Add files/directories inside directory
    for (const file of files.filter(file => isDesiredFile(this.globalState, file.fsPath))) {
-      const vsproj: Vsproj = await vsprojCommand.call(this, file, false, true)
+      vsproj = await vsprojAddCommand.call(this, file, true)
       if (vsproj) {
          if (!changedVsprojs.find(_vsproj => _vsproj.fsPath === vsproj.fsPath))
             changedVsprojs.push(vsproj)
@@ -201,22 +246,40 @@ async function vsprojAddDirectory(this: vscode.ExtensionContext, fsPath: string)
    }
 
    for (const vsproj of changedVsprojs)
-      VsprojUtil.persist(vsproj)
+      VsprojUtil.persist(vsproj);
 }
 
 // How do we actually tell if a directory or file was deleted?
 function wasDirectory(fsPath: string) {
-   return path.extname(fsPath) === ''
+   return path.extname(fsPath) === '';
+}
+
+function isDirectory(fsPath: string) {
+   return (fs.lstatSync(fsPath).isDirectory());
+}
+
+async function fileExists(fsPath: string) {
+   return new Promise<Boolean>((resolve) => {
+      fs.access(fsPath, fs.constants.F_OK, (err) => {
+         if (err) {
+            resolve(false);
+         } else {
+            resolve(true);
+         }
+      });
+   });
 }
 
 async function handleFileDeletion({ fsPath }: vscode.Uri) {
    try {
-      const vsproj = await getVsprojForFile(fsPath)
+      console.log("did delete", fsPath);
+      const vsproj = await getVsprojForFile(fsPath);
       if (!vsproj) return;
       if (!wasDirectory(fsPath) && !VsprojUtil.hasFile(vsproj, fsPath))
          return
 
-      _vsprojRemovals.push({ vsproj, filePath: fsPath })
+      _vsprojRemovals.push(fsPath);
+
       await debouncedRemoveFromVsproj(
          _vsprojRemovals,
          () => { _vsprojRemovals = [] }
@@ -227,21 +290,12 @@ async function handleFileDeletion({ fsPath }: vscode.Uri) {
 }
 
 const debouncedRemoveFromVsproj = debounce(
-   async (removals: VsprojAndFile[], onCall: Function) => {
-      onCall()
+   async (removals: string[], onCall: Function) => {
+      onCall();
 
-      const message = removals.length > 1
-         ? multiDeleteMessage(removals.map(rem => rem.filePath))
-         : singleDeleteMessage(removals[0].vsproj, removals[0].filePath)
-
-      if (getConfig().get('silentDeletion', false)
-         || await window.showWarningMessage(message, YES) !== YES) {
-         return
-      }
-
-      for (const { filePath, vsproj } of removals) {
+      for (let filePath of removals) {
          await commands.executeCommand('extension.vsproj.remove',
-            { fsPath: filePath }, vsproj, true)
+            { fsPath: filePath });
       }
    },
    _debounceDeleteTime
@@ -251,7 +305,7 @@ function getTypeForFile(fileName: string, itemType: ItemType): string {
    const extension = path.extname(fileName)
    return typeof itemType === 'string'
       ? itemType
-      : itemType[extension] || itemType['*'] || 'Content'
+      : !extension ? "Folder" : (itemType[extension] || itemType['*'] || 'Content')
 }
 
 function isDesiredFile(globalState: vscode.Memento, queryPath: string) {
@@ -283,40 +337,31 @@ async function updateIgnoredPaths(globalState: vscode.Memento, addPath: string) 
    await globalState.update('vsproj.ignorePaths', list)
 }
 
-function singleDeleteMessage(vsproj: Vsproj, filePath: string) {
-   const fileName = path.basename(filePath)
-   return `${fileName} was deleted. Remove it from ${vsproj.name}?`
-}
-
-function multiDeleteMessage(filePaths: string[]) {
-   return `${filePaths.length} files were deleted. Remove them from vsproj?`
-}
-
 async function vsprojRemoveCommand(
    this: vscode.ExtensionContext,
    // Use file path from context or fall back to active document
-   { fsPath }: vscode.Uri = window.activeTextEditor.document.uri,
-   vsproj?: Vsproj,
+   uri: vscode.Uri | null = window.activeTextEditor ? window.activeTextEditor.document.uri : null,
    bulkMode = false
 ): Promise<Vsproj | void> {
-   const wasDir = wasDirectory(fsPath)
-   const fileName = path.basename(fsPath)
-   console.log(`extension.vsproj#remove(${fileName})`)
-
-   const vsprojProvided = !!vsproj
-   if (vsproj) {
-      vsproj = VsprojUtil.ensureValid(vsproj)
-   } else {
-      vsproj = await getVsprojForFile(fsPath)
+   if (!uri || !uri.fsPath) {
+      return;
    }
 
-   if (!vsproj) return
+   const fsPath = uri.fsPath;
+
+   const vsproj = await getVsprojForFile(fsPath);
+
+   if (!vsproj) return;
+
+   const wasDir = wasDirectory(fsPath);
+   const fileName = path.basename(fsPath);
+   console.log(`extension.vsproj#remove(${ fsPath })`)
 
    try {
       const removed = await VsprojUtil.removeFile(vsproj, fsPath, wasDir)
       await VsprojUtil.persist(vsproj)
       if (!removed && !bulkMode) {
-         window.showWarningMessage(`${fileName} was not found in ${vsproj.name}`)
+         window.showWarningMessage(`${ fileName } was not found in ${ vsproj.name }`)
       }
    } catch (err) {
       window.showErrorMessage(err.toString())
@@ -327,11 +372,11 @@ async function vsprojRemoveCommand(
 async function getVsprojForFile(fsPath: string) {
    try {
       const projExt = getProjExtension();
-      return await VsprojUtil.forFile(fsPath, projExt);
+      return await VsprojUtil.getProjforFile(fsPath, projExt, getWorkspaceParentFolders());
    } catch (err) {
       if (err instanceof VsprojUtil.NoVsprojError) {
          const fileName = path.basename(fsPath)
-         await window.showErrorMessage(`Unable to locate vsproj for file: ${fileName}`)
+         await window.showErrorMessage(`Unable to locate vsproj for file: ${ fileName }`)
       } else {
          console.trace(err)
       }

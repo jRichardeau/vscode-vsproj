@@ -11,27 +11,28 @@ export class NoVsprojError extends Error { }
 
 let _cacheXml: { [path: string]: XML } = Object.create(null)
 
-export async function getPath(fileDir: string, projectFileExtension: string, walkUp = true): Promise<string> {
+export async function getProjPath(fileDir: string, projectFileExtension: string, rootPaths: string[], walkUp = true): Promise<string> {
    if (!path.isAbsolute(fileDir))
       fileDir = path.resolve(fileDir)
 
    const files = await fs.readdir(fileDir)
-   const vsproj = files.find((file:any) => file.endsWith(`.${projectFileExtension}`))
+   const vsproj = files.find((file: any) => file.endsWith(`.${ projectFileExtension }`))
    if (vsproj)
       return path.resolve(fileDir, vsproj)
    if (walkUp) {
-      const parent = path.resolve(fileDir, '..')
-      if (parent === fileDir)
-         throw new NoVsprojError(`Reached fs root, no ${projectFileExtension} found`)
-      return getPath(parent, projectFileExtension)
+      const parent = path.resolve(fileDir, '..');
+      if (rootPaths.indexOf(parent) >= 0 || parent === fileDir) {
+         throw new NoVsprojError(`Reached fs root, no ${ projectFileExtension } found`);
+      }
+      return getProjPath(parent, projectFileExtension, rootPaths);
    }
-   throw new NoVsprojError(`No ${projectFileExtension} found in current directory: ${fileDir}`)
+   throw new NoVsprojError(`No ${ projectFileExtension } found in current directory: ${ fileDir }`)
 }
 
 export function hasFile(vsproj: Vsproj, filePath: string) {
    const filePathRel = relativeTo(vsproj, filePath)
    const project = vsproj.xml.getroot()
-   const match = project.find(`./ItemGroup/*[@Include='${filePathRel}']`)
+   const match = project.find(`./ItemGroup/*[@Include='${ filePathRel }']`)
    return !!match
 }
 
@@ -41,7 +42,7 @@ export function relativeTo(vsproj: Vsproj, filePath: string) {
 }
 
 export function addFile(vsproj: Vsproj, filePath: string, itemType: string) {
-   const itemGroups = vsproj.xml.getroot().findall(`./ItemGroup/${itemType}/..`)
+   const itemGroups = vsproj.xml.getroot().findall(`./ItemGroup/${ itemType }/..`)
    const itemGroup = itemGroups.length
       ? itemGroups[itemGroups.length - 1]
       : etree.SubElement(vsproj.xml.getroot(), 'ItemGroup')
@@ -50,17 +51,28 @@ export function addFile(vsproj: Vsproj, filePath: string, itemType: string) {
 }
 
 export async function removeFile(vsproj: Vsproj, filePath: string, directory = false): Promise<boolean> {
-   const root = vsproj.xml.getroot()
-   const filePathRel = relativeTo(vsproj, filePath)
-   const itemGroups = root.findall('./ItemGroup')
-   const found: boolean = itemGroups.some(itemGroup => {
-      const elements = directory
-         ? itemGroup.findall(`./*[@Include]`).filter(element => element.attrib['Include'].startsWith(filePathRel))
-         : itemGroup.findall(`./*[@Include='${filePathRel}']`)
+   const root = vsproj.xml.getroot();
+   const filePathRel = relativeTo(vsproj, filePath);
+   const itemGroups = root.findall('./ItemGroup');
+   let found: boolean = false;
+   itemGroups.forEach(itemGroup => {
+      let elements = directory
+         ? itemGroup.findall(`./*[@Include]`).filter(element => {
+            return (
+               //Directory itself
+               element.attrib['Include'] === filePathRel ||
+               //Sub directories
+               element.attrib['Include'].startsWith(filePathRel + "\\")
+            );
+         })
+         : itemGroup.findall(`./*[@Include='${ filePathRel }']`);
+
       for (const element of elements) {
          itemGroup.remove(element)
       }
-      return elements.length > 0
+      if (!found) {
+         found = elements.length > 0;
+      }
    })
    //Should remove file from source control, but not... to complicated for now
    await sourceControl.remove(filePath);
@@ -94,17 +106,11 @@ export async function persist(vsproj: Vsproj, indent = 2) {
    _cacheXml[vsproj.fsPath] = vsproj.xml
 }
 
-export async function forFile(filePath: string, projectFileExtension: string): Promise<Vsproj> {
-   const fsPath = await getPath(path.dirname(filePath), projectFileExtension)
+export async function getProjforFile(filePath: string, projectFileExtension: string, rootPaths: string[]): Promise<Vsproj> {
+   const fsPath = await getProjPath(path.dirname(filePath), projectFileExtension, rootPaths);
    const name = path.basename(fsPath)
    const xml = await load(fsPath)
    return { fsPath, name, xml }
-}
-
-export function ensureValid(vsproj: Vsproj) {
-   return Object.assign({}, vsproj, {
-      xml: _cacheXml[vsproj.fsPath]
-   })
 }
 
 async function load(vsprojPath: string) {

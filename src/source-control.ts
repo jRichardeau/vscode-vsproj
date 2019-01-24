@@ -24,6 +24,7 @@ const tfsCallback = (itemspec: string, successMsg: string, resolve: Function) =>
 }
 
 const addToTFS = (itemspec: string) => {
+   return;
    vscode.window.setStatusBarMessage('TFS: Adding...');
    return new Promise((resolve) => {
       tfs('add', itemspec, null, tfsCallback(itemspec, 'successfully added.', resolve));
@@ -31,6 +32,7 @@ const addToTFS = (itemspec: string) => {
 }
 
 const checkOutTFS = (itemspec: string) => {
+   return;
    vscode.window.setStatusBarMessage('TFS: Updating...');
    return new Promise((resolve) => {
       tfs('checkout', itemspec, null,
@@ -39,6 +41,7 @@ const checkOutTFS = (itemspec: string) => {
 }
 
 const deleteTFS = (itemspec: string) => {
+   return;
    return new Promise((resolve) => {
       const fileName = getFileNameFromPath(itemspec);
       vscode.window.showWarningMessage(`TFS: "${fileName}" has not been removed from TFS, you have to do it in VS`);
