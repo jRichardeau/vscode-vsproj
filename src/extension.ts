@@ -11,7 +11,6 @@ import * as StatusBar from './statusbar'
 const { window, commands, workspace } = vscode
 const debounce = require('lodash.debounce')
 
-const [YES, NO, NEVER] = ['Yes', 'Not Now', 'Never For This File']
 const _debounceDeleteTime = 2000
 
 let _vsprojRemovals: string[] = []
