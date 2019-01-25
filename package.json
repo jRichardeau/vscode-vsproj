@@ -1,8 +1,8 @@
 {
-   "name": "vscode-vsproj-tfs",
-   "displayName": "VS Code .*proj + TFS",
-   "description": "Add/remove files from .*proj and TFS",
-   "version": "0.0.1",
+   "name": "vscode-vsproj",
+   "displayName": "VS Code .*proj",
+   "description": "Add/remove files in .*proj file to maintain compatibility with Visual Studio",
+   "version": "1.0.0",
    "publisher": "jRichardeau",
    "engines": {
       "vscode": "^1.30.0"
@@ -13,22 +13,23 @@
    "activationEvents": [
       "*"
    ],
-   "keywords": ["multi-root ready"],
+   "keywords": [
+      "njsproj",
+      "csproj",
+      "Visual Studio",
+      "multi-root ready"
+   ],
    "icon": "img/icon.png",
    "main": "./out/src/extension",
    "contributes": {
       "commands": [
          {
             "command": "extension.vsproj.add",
-            "title": "vsproj: Include in Project + TFS"
+            "title": "vsproj: Include in Project"
          },
          {
             "command": "extension.vsproj.remove",
             "title": "vsproj: Remove from Project"
-         },
-         {
-            "command": "extension.vsproj.clearIgnoredPaths",
-            "title": "vsproj: Clear Ignored Paths"
          }
       ],
       "configuration": {
@@ -72,11 +73,6 @@
                ],
                "default": "node_modules",
                "description": "A regular expression to exclude file paths by."
-            },
-            "vsproj.silentDeletion": {
-               "type": "boolean",
-               "default": false,
-               "description": "Silently delete items from csproj when their corresponding files are removed?"
             }
          }
       },
@@ -121,7 +117,6 @@
       "@azz/elementtree": "^0.1.6",
       "lodash.debounce": "^4.0.8",
       "mz": "^2.4.0",
-      "strip-bom": "^3.0.0",
-      "tfs": "^1.4.2"
+      "strip-bom": "^3.0.0"
    }
 }

@@ -7,7 +7,6 @@ import * as path from 'path'
 import { Vsproj, ActionArgs, ItemType } from './types'
 import * as VsprojUtil from './vsproj'
 import * as StatusBar from './statusbar'
-// import { sourceControl } from "./source-control";
 
 const { window, commands, workspace } = vscode
 const debounce = require('lodash.debounce')
@@ -148,7 +147,6 @@ async function vsprojAddCommand(
 
 async function processAddCommand(
    this: vscode.ExtensionContext,
-   // Use file path from context or fall back to active document
    fsPath: string,
    bulkMode = false) {
 
@@ -164,8 +162,7 @@ async function processAddCommand(
          return;
       }
 
-      // Default to "No" action if user blurs the picker
-      const added = await (pickActions[YES])({
+      const added = await runAction({
          filePath: fsPath,
          fileName,
          bulkMode,
@@ -185,36 +182,18 @@ async function processAddCommand(
    }
 };
 
-const pickActions = {
-   async [YES]({ filePath, fileName, vsproj, bulkMode }: ActionArgs) {
-      const config = workspace.getConfiguration("vsproj")
-      const itemType = config.get<ItemType>('itemType', {
-         '*': 'Content',
-         '.js': 'Compile',
-         '.ts': 'TypeScriptCompile'
-      })
-      VsprojUtil.addFile(vsproj, filePath, getTypeForFile(fileName, itemType))
-      if (!bulkMode) {
-         await VsprojUtil.persist(vsproj)
-      }
-      //Add file to source control
-      // await sourceControl.add(filePath);
-
-      return true;
-   },
-   [NO]({ vsproj }: ActionArgs) {
-      StatusBar.displayItem(vsproj.name, false);
-      return false;
-   },
-   async [NEVER]({ filePath, globalState, fileName }: ActionArgs) {
-      await updateIgnoredPaths(globalState, filePath)
-
-      StatusBar.hideItem()
-      window.showInformationMessage(
-         `Added ${ fileName } to ignore list, to clear list, ` +
-         `run the "vsproj: Clear ignored paths"`);
-      return false;
+async function runAction({ filePath, fileName, vsproj, bulkMode }: ActionArgs) {
+   const config = workspace.getConfiguration("vsproj")
+   const itemType = config.get<ItemType>('itemType', {
+      '*': 'Content',
+      '.js': 'Compile',
+      '.ts': 'TypeScriptCompile'
+   })
+   VsprojUtil.addFile(vsproj, filePath, getTypeForFile(fileName, itemType))
+   if (!bulkMode) {
+      await VsprojUtil.persist(vsproj)
    }
+   return true;
 }
 
 async function vsprojAddDirectory(this: vscode.ExtensionContext, fsPath: string) {
@@ -272,7 +251,6 @@ async function fileExists(fsPath: string) {
 
 async function handleFileDeletion({ fsPath }: vscode.Uri) {
    try {
-      console.log("did delete", fsPath);
       const vsproj = await getVsprojForFile(fsPath);
       if (!vsproj) return;
       if (!wasDirectory(fsPath) && !VsprojUtil.hasFile(vsproj, fsPath))

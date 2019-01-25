@@ -2,7 +2,6 @@ import * as fs from 'mz/fs'
 import * as path from 'path'
 
 import { Vsproj, XML } from './types'
-import { sourceControl } from "./source-control";
 
 const etree = require('@azz/elementtree')
 const stripBom = require('strip-bom')
@@ -74,8 +73,6 @@ export async function removeFile(vsproj: Vsproj, filePath: string, directory = f
          found = elements.length > 0;
       }
    })
-   //Should remove file from source control, but not... to complicated for now
-   await sourceControl.remove(filePath);
    return found;
 }
 
@@ -98,9 +95,6 @@ export async function persist(vsproj: Vsproj, indent = 2) {
 
    //On encode en ascii pour que le checker GIRO soit content
    await fs.writeFile(vsproj.fsPath, xmlFinal, { encoding: "ascii" })
-
-   //Add file to source control, it has been modified !
-   await sourceControl.update(vsproj.fsPath);
 
    // Ensure that that cached XML is up-to-date
    _cacheXml[vsproj.fsPath] = vsproj.xml

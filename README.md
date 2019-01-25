@@ -1,21 +1,7 @@
-# VS Code `.*proj` Extension + TFS
+# VS Code `.*proj` Extension
 
 This extension will helps you keep your *proj files in sync when using VS Code.
 This is useful if you work in a team that uses both VS Code and Visual Studio.
-
-This extension updates TFS status when a file is added (to couple with TFS extension to detect file update)
-
-* [Install TFS extension](https://marketplace.visualstudio.com/items?itemName=ivangabriele.vscode-tfs)
-
-## /!\ /!\ /!\
-
-Extension do not update TFS status when file is removed (do it with VS)
-
-## FORK FROM :
-
-* [GitHub Repository](https://github.com/azz/vscode-csproj)
-* [Marketplace Entry](https://marketplace.visualstudio.com/items?itemName=lucasazzola.vscode-csproj)
-
 
 ## Demo
 
@@ -58,7 +44,6 @@ This extension contributes the following settings:
 | `vsproj.enable`         | Enable/disable this extension.
 | `vsproj.projExtension`  | VS project file to watch and update. Defaults: "njsproj"
 | `vsproj.itemType`       | Mapping from file extension to vsproj XML element. Defaults to: <br/> `{ "*": "Content", ".ts": "TypeScriptCompile" }`
-| `vsproj.silentDeletion` | Silently delete items from vsproj when their corresponding files are removed. Default: `false`.
 | `vsproj.includeRegex`   | Regular expression to match files you want to add to vsproj.
 | `vsproj.excludeRegex`   | Regular expression to exclude files you do not want to add to vsproj.
 
@@ -73,16 +58,26 @@ a directory, `files.exclude`, your saved ignore list, `vsproj.includeRegex` and 
 
 * [GitHub Repository](https://github.com/jRichardeau/vscode-vsproj)
 
+## FORKED FROM :
+
+* [GitHub Repository](https://github.com/azz/vscode-csproj)
+* [Marketplace Entry](https://marketplace.visualstudio.com/items?itemName=lucasazzola.vscode-csproj)
+
+
 ## Release Notes
 
-### Most Recent Release (0.0.1)
+### Most Recent Release (1.0.0)
 
 Features:
 
-* Change TFS status when a file is added
-* Change TFS status of vsproj file when updated (file added)
+* Need a workspace configuration to activate and constraint the folders
+* All prompts have been removed
+* Work when creating folders
+* Work when moving files/folders
+* Work when renaming file/folder
+* Work when removing files/folders
 
-### See GitHub for [full release history](https://github.com/DerFlatulator/vscode-csproj/releases)
+### See GitHub for [full release history](https://github.com/jRichardeau/vscode-vsproj/releases)
 
 ## License
 
