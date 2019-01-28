@@ -2,7 +2,7 @@
    "name": "vscode-vsproj",
    "displayName": "VS Code .*proj",
    "description": "Add/remove files in .*proj file to maintain compatibility with Visual Studio",
-   "version": "1.0.0",
+   "version": "1.0.2",
    "publisher": "jRichardeau",
    "engines": {
       "vscode": "^1.30.0"

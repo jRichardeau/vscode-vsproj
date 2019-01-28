@@ -26,13 +26,17 @@ export function activate(context: vscode.ExtensionContext) {
    if (!config.get<boolean>('activate', false))
       return;
 
+   if (!workspace.workspaceFolders || workspace.workspaceFolders.length === 0) {
+      return;
+   }
+
    const projExt = config.get<string>('projExtension', 'njsproj')
 
    console.log('extension.vsproj#activate for', projExt);
 
-   const vsprojWatcher = workspace.createFileSystemWatcher(`**/*.${ projExt }`)
-   const deleteFileWatcher = workspace.createFileSystemWatcher('**/*', true, true, false)
-   const createAndChangeFileWatcher = workspace.createFileSystemWatcher('**/*', false, false, true)
+   const vsprojWatcher = workspace.createFileSystemWatcher(`**/*.${ projExt }`);
+   const deleteFileWatcher = workspace.createFileSystemWatcher('**/*', true, true, false);
+   const createAndChangeFileWatcher = workspace.createFileSystemWatcher('**/*', false, false, true);
 
    context.subscriptions.push(
       commands.registerCommand('extension.vsproj.add',
@@ -75,12 +79,14 @@ export function activate(context: vscode.ExtensionContext) {
          }
       }),
 
-
-      deleteFileWatcher.onDidDelete(handleFileDeletion),
+      deleteFileWatcher.onDidDelete(async (uri: vscode.Uri) => {
+         if (ignoreEvent(context, uri)) return;
+         await handleFileDeletion(uri);
+      }),
 
       vsprojWatcher, deleteFileWatcher,
 
-      StatusBar.createItem()
+      StatusBar.createItem(projExt, workspace.workspaceFolders)
    )
 }
 
@@ -101,9 +107,9 @@ function getWorkspaceParentFolders() {
 }
 
 export function deactivate() {
-   console.log('extension.vsproj#deactivate')
-   VsprojUtil.invalidateAll()
-   StatusBar.hideItem()
+   console.log('extension.vsproj#deactivate');
+   VsprojUtil.invalidateAll();
+   StatusBar.hideItem();
 }
 
 function ignoreEvent(context: vscode.ExtensionContext, uri: vscode.Uri) {
@@ -137,11 +143,24 @@ async function vsprojAddCommand(
    if (fsPath.endsWith(`.${ projExt }`) || !/(\/|\\)/.test(fsPath))
       return
 
+   removeFromPendingDelete(fsPath);
+
    if (isDirectory(fsPath)) {
       return await vsprojAddDirectory.call(this, fsPath)
    }
 
    return await processAddCommand.call(this, fsPath, bulkMode);
+}
+
+/**
+ * Prevent removing a file that is delete then added in the same process (with SCM for instance)
+ * @param fsPath - Path to remove from pending delete
+ */
+function removeFromPendingDelete(fsPath: string) {
+   const index = _vsprojRemovals.findIndex(path => path === fsPath);
+   if (index >= 0) {
+      _vsprojRemovals.splice(index, 1);
+   }
 }
 
 async function processAddCommand(
@@ -250,6 +269,7 @@ async function fileExists(fsPath: string) {
 
 async function handleFileDeletion({ fsPath }: vscode.Uri) {
    try {
+      console.log("did delete", fsPath);
       const vsproj = await getVsprojForFile(fsPath);
       if (!vsproj) return;
       if (!wasDirectory(fsPath) && !VsprojUtil.hasFile(vsproj, fsPath))
