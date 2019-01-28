@@ -1,34 +1,19 @@
 import * as vscode from 'vscode'
 
 let _statusBarItem: vscode.StatusBarItem
-let _statusBarItemVisible = false
-
-export function displayItem(vsprojName: string, contained = false) {
-    _statusBarItem.text = contained ? `Contained in ${vsprojName}` : `Add to ${vsprojName}`
-    _statusBarItem.tooltip = _statusBarItem.text
-    _statusBarItem.show()
-    _statusBarItemVisible = true
-}
 
 export function hideItem() {
-    _statusBarItem.text = ''
-    _statusBarItem.hide()
-    _statusBarItemVisible = false
+   _statusBarItem.text = '';
+   _statusBarItem.hide();
 }
 
-export function createItem() {
-    // Currenly only support one status bar item.
-    if (_statusBarItem) {
-        _statusBarItem.dispose()
-        _statusBarItemVisible = false
-    }
+export function createItem(projExt: string, workspaceFolders: vscode.WorkspaceFolder[]) {
+   const folders = workspaceFolders.map(f => f.name);
 
-    const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left)
-    item.command = 'extension.vsproj.add'
-    _statusBarItem = item
-    return item
-}
-
-export function isVisible() {
-    return _statusBarItemVisible
+   const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+   item.text = projExt;
+   item.tooltip = `vsproj enabled for "${ projExt }" in folders ${ folders.join(", ") }`;
+   item.show();
+   _statusBarItem = item;
+   return item;
 }
