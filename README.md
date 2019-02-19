@@ -3,31 +3,32 @@
 This extension will helps you keep your *proj files in sync when using VS Code.
 This is useful if you work in a team that uses both VS Code and Visual Studio.
 
-## Demo
+## Configuration
 
-### Adding Files to a Project
+This extension needs a __Visual Studio Code Workspace__ in order to be activated.
 
-![DemoGif](img/demo.gif "Demonstration")
+The workspace should contain :
 
-### Removing Files from a Project
+```javascript
+"settings": {
+   "vsproj": {
+      //Must be true to be activated on the current workspace
+      "activate": true,
+      //List of RegEx to exclude some files
+      "exclude": []
+   }
+}
+```
 
-| **Single File Deletion**  | **Multiple File Deletion**
-|---------------------------|--------------------------------
-| ![Single deletion example](img/demo-single-delete.gif) | ![Multiple deletion example](img/demo-multi-delete.gif)
+If the extension is activated for the workspace, you can see this in the status bar :
+
+![Status Bar](img/demo-status-bar.png "Status Bar")
 
 ## How it Works
 
-When you switch to or save a file not in the nearest `.*proj` up the file system tree, you will prompted.
+When you switch to or create/update/delete a file/folder, it will find the nearest  `.*proj` up the file system tree, and update it depending on the action you've done.
 
-![Prompt](img/demo-prompt.png "Prompt")
-
-Choosing "Close" will add an item to the status bar and stop asking you while you have the file open.
-
-| **File Not in vsproj** | **File Contained in vsproj**
-|------------------------|------------------------------
-| ![Add to vsproj](img/demo-status-bar.png) | ![Contained in vsproj](img/demo-status-bar-contained.png)
-
-You can add a file to vsproj via the command palette:
+You can add/remove a file or folder to vsproj via the command palette (recursively) :
 
 ![Command Palette](img/demo-command.png "Command Palette")
 
@@ -41,18 +42,16 @@ This extension contributes the following settings:
 
 | **Setting Key**         | **Description**
 |-------------------------|-----------------
-| `vsproj.enable`         | Enable/disable this extension.
+| `vsproj.enable`         | Enable/disable this extension globally.
 | `vsproj.projExtension`  | VS project file to watch and update. Defaults: "njsproj"
 | `vsproj.itemType`       | Mapping from file extension to vsproj XML element. Defaults to: <br/> `{ "*": "Content", ".ts": "TypeScriptCompile" }`
 | `vsproj.includeRegex`   | Regular expression to match files you want to add to vsproj.
 | `vsproj.excludeRegex`   | Regular expression to exclude files you do not want to add to vsproj.
 
 
-These regular expressions will prevent unwanted prompts. If a file matches `includeRegex` *and* `excludeRegex`, it will be excluded.
+These regular expressions will prevent unwanted files to be added in the _proj_ file. If a file matches `includeRegex` *and* `excludeRegex`, it will be excluded.
 
-The regular expressions will prevent this extension from prompting for action, but it intentionally will not
-prevent you from adding via the command palette or a context menu. _However_, if you click "Include in Project" on
-a directory, `files.exclude`, your saved ignore list, `vsproj.includeRegex` and `vsproj.excludeRegex` will be honored.
+You can also ignore files by workspace with the `exclude` setting described above.
 
 ## Links
 
@@ -66,7 +65,7 @@ a directory, `files.exclude`, your saved ignore list, `vsproj.includeRegex` and 
 
 ## Release Notes
 
-### Most Recent Release (1.0.0)
+### Most Recent Release (1.0.3)
 
 Features:
 
@@ -78,6 +77,11 @@ Features:
 * Work when removing files/folders
 
 ### See GitHub for [full release history](https://github.com/jRichardeau/vscode-vsproj/releases)
+
+### Known Issues
+
+* Renaming file or folder and changing only case will create a second entry with the new file/folder name without removing the previous.
+* Encoding of _proj_ file is only ASCII
 
 ## License
 
