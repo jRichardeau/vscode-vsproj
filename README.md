@@ -71,7 +71,21 @@ You can also ignore files by workspace with the `exclude` setting described abov
 
 ## Release Notes
 
-### Most Recent Release (1.0.3)
+### Most Recent Release (1.1.0)
+
+#### Release 1.1.0
+
+Features:
+
+* Debug output in terminal
+
+#### Release 1.0.3
+
+Features:
+
+* Exlude files from workspace configuration file
+
+#### Release 1.0.2
 
 Features:
 
