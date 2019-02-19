@@ -169,16 +169,18 @@ async function processAddCommand(
    bulkMode = false) {
 
    const fileName = path.basename(fsPath)
-   console.log(`extension.vsproj#trigger(${ fileName })#add`)
+   console.log(`extension.vsproj#trigger(${ fileName })#add`);
 
    try {
       const vsproj = await getVsprojForFile(fsPath);
       if (!vsproj) return;
 
       if (VsprojUtil.hasFile(vsproj, fsPath)) {
-         console.log(`extension.vsproj#trigger(${ fileName }): already in proj file`)
+         console.log(`extension.vsproj#trigger(${ fileName }): already in proj file`);
          return;
       }
+
+      console.log(`extension.vsproj#trigger(${ fileName }): add file`);
 
       const added = await runAction({
          filePath: fsPath,
@@ -312,8 +314,9 @@ function isDesiredFile(globalState: vscode.Memento, queryPath: string) {
    if (ignorePaths.indexOf(queryPath) > -1)
       return false
 
-   const includeRegex = config.get('includeRegex', '.*')
-   const excludeRegex = config.get('excludeRegex', null)
+   const includeRegex = config.get('includeRegex', '.*');
+   //Global exclusions
+   const excludeRegex = config.get('excludeRegex', null);
 
    if (includeRegex != null && !new RegExp(includeRegex).test(queryPath))
       return false
@@ -321,7 +324,12 @@ function isDesiredFile(globalState: vscode.Memento, queryPath: string) {
    if (excludeRegex != null && new RegExp(excludeRegex).test(queryPath))
       return false
 
-   return true
+   //Exclusions by workspace
+   const excludeList = config.get('exclude', []);
+
+   return excludeList.every(excludeValue => {
+      return !new RegExp(excludeValue).test(queryPath);
+   });
 }
 
 function clearIgnoredPathsCommand(this: vscode.ExtensionContext) {
