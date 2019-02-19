@@ -36,13 +36,19 @@ Or via the context menu in the file explorer:
 
 ![Context Menu](img/demo-context-menu.png "Context Menu")
 
+## Debug
+
+You can see extension output in the _output_ tab of the terminal.
+
+![Output](img/demo-output.png "Output")
+
 ## Extension Settings
 
-This extension contributes the following settings:
+This extension contributes the following settings (all settings can be overrided in the workspace but it is not merged) :
 
 | **Setting Key**         | **Description**
 |-------------------------|-----------------
-| `vsproj.enable`         | Enable/disable this extension globally.
+| `vsproj.enable`         | Enable/disable this extension.
 | `vsproj.projExtension`  | VS project file to watch and update. Defaults: "njsproj"
 | `vsproj.itemType`       | Mapping from file extension to vsproj XML element. Defaults to: <br/> `{ "*": "Content", ".ts": "TypeScriptCompile" }`
 | `vsproj.includeRegex`   | Regular expression to match files you want to add to vsproj.

@@ -7,6 +7,7 @@ import * as path from 'path'
 import { Vsproj, ActionArgs, ItemType } from './types'
 import * as VsprojUtil from './vsproj'
 import * as StatusBar from './statusbar'
+import { VsProjOutput } from "./vsprojOutput";
 
 const { window, commands, workspace } = vscode
 const debounce = require('lodash.debounce')
@@ -16,7 +17,9 @@ const _debounceDeleteTime = 2000
 let _vsprojRemovals: string[] = []
 let workspaceParentFolders: string[];
 
-export function activate(context: vscode.ExtensionContext) {
+const _disposables: vscode.Disposable[] = [];
+
+export async function activate(context: vscode.ExtensionContext) {
    const config = getGlobalConfig()
    //Gobal activation
    if (!config.get<boolean>('enabled', true))
@@ -30,15 +33,22 @@ export function activate(context: vscode.ExtensionContext) {
       return;
    }
 
+   _disposables.push(await VsProjOutput.CreateChannel());
+
    const projExt = config.get<string>('projExtension', 'njsproj')
 
-   console.log('extension.vsproj#activate for', projExt);
+   VsProjOutput.AppendLine('extension.vsproj#activate for', projExt);
 
    const vsprojWatcher = workspace.createFileSystemWatcher(`**/*.${ projExt }`);
    const deleteFileWatcher = workspace.createFileSystemWatcher('**/*', true, true, false);
    const createAndChangeFileWatcher = workspace.createFileSystemWatcher('**/*', false, false, true);
 
    context.subscriptions.push(
+      commands.registerCommand('extension.vsproj.output',
+         () => {
+            //Show debug output console
+            VsProjOutput.Show()
+         }),
       commands.registerCommand('extension.vsproj.add',
          vsprojAddCommand.bind(context)),
       commands.registerCommand('extension.vsproj.remove',
@@ -107,9 +117,10 @@ function getWorkspaceParentFolders() {
 }
 
 export function deactivate() {
-   console.log('extension.vsproj#deactivate');
+   VsProjOutput.AppendLine('extension.vsproj#deactivate');
    VsprojUtil.invalidateAll();
    StatusBar.hideItem();
+   _disposables.forEach(d => d.dispose());
 }
 
 function ignoreEvent(context: vscode.ExtensionContext, uri: vscode.Uri) {
@@ -169,18 +180,18 @@ async function processAddCommand(
    bulkMode = false) {
 
    const fileName = path.basename(fsPath)
-   console.log(`extension.vsproj#trigger(${ fileName })#add`);
+   VsProjOutput.AppendLine(`extension.vsproj#trigger(${ fileName })#add`);
 
    try {
       const vsproj = await getVsprojForFile(fsPath);
       if (!vsproj) return;
 
       if (VsprojUtil.hasFile(vsproj, fsPath)) {
-         console.log(`extension.vsproj#trigger(${ fileName }): already in proj file`);
+         VsProjOutput.AppendLine(`extension.vsproj#trigger(${ fileName }): already in proj file`);
          return;
       }
 
-      console.log(`extension.vsproj#trigger(${ fileName }): add file`);
+      VsProjOutput.AppendLine(`extension.vsproj#trigger(${ fileName }): add file`);
 
       const added = await runAction({
          filePath: fsPath,
@@ -194,10 +205,10 @@ async function processAddCommand(
 
    } catch (err) {
       if (!(err instanceof VsprojUtil.NoVsprojError)) {
-         window.showErrorMessage(err.toString())
          console.trace(err)
+         VsProjOutput.AppendLine(err);
       } else {
-         console.log(`extension.vsproj#trigger(${ fileName }): no project file found`)
+         VsProjOutput.AppendLine(`extension.vsproj#trigger(${ fileName }): no project file found`)
       }
    }
 };
@@ -271,9 +282,12 @@ async function fileExists(fsPath: string) {
 
 async function handleFileDeletion({ fsPath }: vscode.Uri) {
    try {
-      console.log("did delete", fsPath);
       const vsproj = await getVsprojForFile(fsPath);
       if (!vsproj) return;
+
+      const fileName = path.basename(fsPath);
+      VsProjOutput.AppendLine(`extension.vsproj#trigger(${ fileName }) : will be deleted`);
+
       if (!wasDirectory(fsPath) && !VsprojUtil.hasFile(vsproj, fsPath))
          return
 
@@ -284,7 +298,8 @@ async function handleFileDeletion({ fsPath }: vscode.Uri) {
          () => { _vsprojRemovals = [] }
       )
    } catch (err) {
-      console.trace(err)
+      console.trace(err);
+      VsProjOutput.AppendLine(err);
    }
 }
 
@@ -360,17 +375,17 @@ async function vsprojRemoveCommand(
 
    const wasDir = wasDirectory(fsPath);
    const fileName = path.basename(fsPath);
-   console.log(`extension.vsproj#remove(${ fsPath })`)
+   VsProjOutput.AppendLine(`extension.vsproj#remove(${ fsPath })`);
 
    try {
       const removed = await VsprojUtil.removeFile(vsproj, fsPath, wasDir)
       await VsprojUtil.persist(vsproj)
       if (!removed && !bulkMode) {
-         window.showWarningMessage(`${ fileName } was not found in ${ vsproj.name }`)
+         VsProjOutput.AppendLine(`${ fileName } was not found in ${ vsproj.name }`);
       }
    } catch (err) {
-      window.showErrorMessage(err.toString())
-      console.trace(err)
+      console.trace(err);
+      VsProjOutput.AppendLine(err);
    }
 }
 
@@ -381,9 +396,10 @@ async function getVsprojForFile(fsPath: string) {
    } catch (err) {
       if (err instanceof VsprojUtil.NoVsprojError) {
          const fileName = path.basename(fsPath)
-         await window.showErrorMessage(`Unable to locate vsproj for file: ${ fileName }`)
+         VsProjOutput.AppendLine(`Unable to locate vsproj for file: ${ fileName }`);
       } else {
-         console.trace(err)
+         console.trace(err);
+         VsProjOutput.AppendLine(err);
       }
       return
    }
