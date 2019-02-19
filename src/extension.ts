@@ -261,7 +261,7 @@ async function vsprojAddDirectory(this: vscode.ExtensionContext, fsPath: string)
 
 // How do we actually tell if a directory or file was deleted?
 function wasDirectory(fsPath: string) {
-   return path.extname(fsPath) === '';
+   return path.extname(fsPath) === '' && !fsPath.startsWith(".");
 }
 
 function isDirectory(fsPath: string) {
@@ -316,7 +316,7 @@ const debouncedRemoveFromVsproj = debounce(
 )
 
 function getTypeForFile(fileName: string, itemType: ItemType): string {
-   const extension = path.extname(fileName)
+   const extension = path.extname(fileName) || (fileName.startsWith(".") ? "file" : "");
    return typeof itemType === 'string'
       ? itemType
       : !extension ? "Folder" : (itemType[extension] || itemType['*'] || 'Content')

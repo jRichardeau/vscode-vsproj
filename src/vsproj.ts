@@ -35,13 +35,16 @@ export function hasFile(vsproj: Vsproj, filePath: string) {
    return !!match
 }
 
-export function relativeTo(vsproj: Vsproj, filePath: string, addFinalSlashToFolders : boolean = false) {
+export function relativeTo(vsproj: Vsproj, filePath: string, addFinalSlashToFolders: boolean = false) {
    let relativePath = path.relative(path.dirname(vsproj.fsPath), filePath)
       .replace(/\//g, '\\') // use Windows style paths for consistency
 
    if (addFinalSlashToFolders && path.extname(filePath) === '') {
-      //Add final \ for directories
-      relativePath += "\\";
+      const fileName = path.basename(filePath);
+      if (!fileName.startsWith(".")) {
+         //Add final \ for directories
+         relativePath += "\\";
+      }
    }
    return relativePath;
 }
@@ -92,9 +95,9 @@ export async function persist(vsproj: Vsproj, indent = 2) {
 
    // Add byte order mark if encoding utf8 : '\ufeff'
    const xmlFinal = (xmlString)
-      //Erreur sur ce replace, en a-t-on vraiment besoin ?
-      // .replace(/(?<!\r)>\n/g, '\r\n') // use CRLF
-      // .replace(/(\r)?(\n)+$/, '') // no newline at end of file
+   //Erreur sur ce replace, en a-t-on vraiment besoin ?
+   // .replace(/(?<!\r)>\n/g, '\r\n') // use CRLF
+   // .replace(/(\r)?(\n)+$/, '') // no newline at end of file
 
    //Suppression du flag read-only de VS sur ce fichier
    await fs.chmod(vsproj.fsPath, "777");
