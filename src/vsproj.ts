@@ -35,11 +35,11 @@ export function hasFile(vsproj: Vsproj, filePath: string) {
    return !!match
 }
 
-export function relativeTo(vsproj: Vsproj, filePath: string) {
+export function relativeTo(vsproj: Vsproj, filePath: string, addFinalSlashToFolders : boolean = false) {
    let relativePath = path.relative(path.dirname(vsproj.fsPath), filePath)
       .replace(/\//g, '\\') // use Windows style paths for consistency
 
-   if (path.extname(filePath) === '') {
+   if (addFinalSlashToFolders && path.extname(filePath) === '') {
       //Add final \ for directories
       relativePath += "\\";
    }
@@ -52,7 +52,7 @@ export function addFile(vsproj: Vsproj, filePath: string, itemType: string) {
       ? itemGroups[itemGroups.length - 1]
       : etree.SubElement(vsproj.xml.getroot(), 'ItemGroup')
    const itemElement = etree.SubElement(itemGroup, itemType)
-   itemElement.set('Include', relativeTo(vsproj, filePath))
+   itemElement.set('Include', relativeTo(vsproj, filePath, true))
 }
 
 export async function removeFile(vsproj: Vsproj, filePath: string, directory = false): Promise<boolean> {
