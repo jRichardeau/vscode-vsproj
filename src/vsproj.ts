@@ -36,8 +36,14 @@ export function hasFile(vsproj: Vsproj, filePath: string) {
 }
 
 export function relativeTo(vsproj: Vsproj, filePath: string) {
-   return path.relative(path.dirname(vsproj.fsPath), filePath)
+   let relativePath = path.relative(path.dirname(vsproj.fsPath), filePath)
       .replace(/\//g, '\\') // use Windows style paths for consistency
+
+   if (path.extname(filePath) === '') {
+      //Add final \ for directories
+      relativePath += "\\";
+   }
+   return relativePath;
 }
 
 export function addFile(vsproj: Vsproj, filePath: string, itemType: string) {
@@ -88,7 +94,7 @@ export async function persist(vsproj: Vsproj, indent = 2) {
    const xmlFinal = (xmlString)
       //Erreur sur ce replace, en a-t-on vraiment besoin ?
       // .replace(/(?<!\r)>\n/g, '\r\n') // use CRLF
-      .replace(/(\r)?(\n)+$/, '') // no newline at end of file
+      // .replace(/(\r)?(\n)+$/, '') // no newline at end of file
 
    //Suppression du flag read-only de VS sur ce fichier
    await fs.chmod(vsproj.fsPath, "777");
