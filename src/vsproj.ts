@@ -97,7 +97,7 @@ export async function persist(vsproj: Vsproj, indent = 2) {
    const xmlFinal = (xmlString)
    //Erreur sur ce replace, en a-t-on vraiment besoin ?
    // .replace(/(?<!\r)>\n/g, '\r\n') // use CRLF
-   // .replace(/(\r)?(\n)+$/, '') // no newline at end of file
+   .replace(/(\r)?(\n)+$/, '') // no newline at end of file
 
    //Suppression du flag read-only de VS sur ce fichier
    await fs.chmod(vsproj.fsPath, "777");
