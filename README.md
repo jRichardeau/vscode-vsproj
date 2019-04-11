@@ -50,7 +50,7 @@ This extension contributes the following settings (all settings can be overrided
 |-------------------------|-----------------
 | `vsproj.enable`         | Enable/disable this extension.
 | `vsproj.projExtension`  | VS project file to watch and update. Defaults: "njsproj"
-| `vsproj.itemType`       | Mapping from file extension to vsproj XML element. Defaults to: <br/> `{ "*": "Content", ".ts": "TypeScriptCompile" }`
+| `vsproj.itemType`       | Mapping from file extension to vsproj XML element. Defaults to: <br/> `{ "*": "Content", ".js": "Compile", ".ts": "TypeScriptCompile" }`
 | `vsproj.includeRegex`   | Regular expression to match files you want to add to vsproj.
 | `vsproj.excludeRegex`   | Regular expression to exclude files you do not want to add to vsproj.
 
