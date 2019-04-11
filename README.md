@@ -50,6 +50,7 @@ This extension contributes the following settings (all settings can be overrided
 |-------------------------|-----------------
 | `vsproj.enable`         | Enable/disable this extension.
 | `vsproj.projExtension`  | VS project file to watch and update. Defaults: "njsproj"
+| `vsproj.encoding`       | VS project file encoding. Defaults: "ascii"
 | `vsproj.itemType`       | Mapping from file extension to vsproj XML element. Defaults to: <br/> `{ "*": "Content", ".js": "Compile", ".ts": "TypeScriptCompile" }`
 | `vsproj.includeRegex`   | Regular expression to match files you want to add to vsproj.
 | `vsproj.excludeRegex`   | Regular expression to exclude files you do not want to add to vsproj.
@@ -71,7 +72,13 @@ You can also ignore files by workspace with the `exclude` setting described abov
 
 ## Release Notes
 
-### Most Recent Release (1.1.1)
+### Most Recent Release (1.2.0)
+
+#### Release 1.2.0
+
+Features:
+
+* Configure VS project file encoding
 
 #### Release 1.1.0
 
@@ -101,7 +108,6 @@ Features:
 ### Known Issues
 
 * Renaming file or folder and changing only case will create a second entry with the new file/folder name without removing the previous.
-* Encoding of _proj_ file is only ASCII
 
 ## License
 
