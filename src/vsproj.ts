@@ -105,7 +105,8 @@ export async function persist(vsproj: Vsproj, encoding: string = "ascii", indent
    //Removing Visual Studio read-only flag on this file so that we can write on it
    await fs.chmod(vsproj.fsPath, "777");
 
-   await fs.writeFile(vsproj.fsPath, xmlFinal, { encoding });
+   //Explicitly synchronous to avoid concurrent writes
+   fs.writeFileSync(vsproj.fsPath, xmlFinal, { encoding });
 
    // Ensure that that cached XML is up-to-date
    _cacheXml[vsproj.fsPath] = vsproj.xml
