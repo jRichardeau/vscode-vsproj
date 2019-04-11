@@ -160,7 +160,7 @@ async function vsprojAddCommand(
       return await vsprojAddDirectory.call(this, fsPath)
    }
 
-   return await processAddCommand.call(this, fsPath, bulkMode);
+   return await processAddCommand.call(this, fsPath, bulkMode === true);
 }
 
 /**
@@ -380,7 +380,7 @@ async function vsprojRemoveCommand(
    try {
       const removed = await VsprojUtil.removeFile(vsproj, fsPath, wasDir)
       await VsprojUtil.persist(vsproj)
-      if (!removed && !bulkMode) {
+      if (!removed && bulkMode !== true) {
          VsProjOutput.AppendLine(`${ fileName } was not found in ${ vsproj.name }`);
       }
    } catch (err) {
