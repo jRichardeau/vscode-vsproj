@@ -50,6 +50,11 @@
                "default": "njsproj",
                "description": "VS project file to watch and update"
             },
+            "vsproj.encoding": {
+               "type": "string",
+               "default": "ascii",
+               "description": "VS project file encoding"
+            },
             "vsproj.itemType": {
                "type": [
                   "string",

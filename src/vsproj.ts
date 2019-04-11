@@ -89,21 +89,23 @@ async function readFile(path: string): Promise<string> {
    return stripBom(await fs.readFile(path, 'utf8'))
 }
 
-export async function persist(vsproj: Vsproj, indent = 2) {
-   //On encode en windows-1252 pour que le checker GIRO soit content
-   const xmlString = vsproj.xml.write({ indent, encoding: "Windows-1252" })
+function getProjFileXmlEncoding(encoding: string) {
+   return encoding === "ascii" ? "Windows-1252" : "utf-8";
+}
 
-   // Add byte order mark if encoding utf8 : '\ufeff'
+export async function persist(vsproj: Vsproj, encoding: string = "ascii", indent = 2) {
+   const xmlString = vsproj.xml.write({ indent, encoding: getProjFileXmlEncoding(encoding) })
+
+   // no newline at end of file
    const xmlFinal = (xmlString)
-   //Erreur sur ce replace, en a-t-on vraiment besoin ?
-   // .replace(/(?<!\r)>\n/g, '\r\n') // use CRLF
-   .replace(/(\r)?(\n)+$/, '') // no newline at end of file
+      .replace(/(\r)?(\n)+$/, '');
+      //Error with this replace, is it usefull ?
+      // .replace(/(?<!\r)>\n/g, '\r\n') // use CRLF
 
-   //Suppression du flag read-only de VS sur ce fichier
+   //Removing Visual Studio read-only flag on this file so that we can write on it
    await fs.chmod(vsproj.fsPath, "777");
 
-   //On encode en ascii pour que le checker GIRO soit content
-   await fs.writeFile(vsproj.fsPath, xmlFinal, { encoding: "ascii" })
+   await fs.writeFile(vsproj.fsPath, xmlFinal, { encoding });
 
    // Ensure that that cached XML is up-to-date
    _cacheXml[vsproj.fsPath] = vsproj.xml

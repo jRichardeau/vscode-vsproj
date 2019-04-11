@@ -35,7 +35,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
    _disposables.push(await VsProjOutput.CreateChannel());
 
-   const projExt = config.get<string>('projExtension', 'njsproj')
+   const projExt = config.get<string>('projExtension', 'njsproj');
 
    VsProjOutput.AppendLine('extension.vsproj#activate for', projExt);
 
@@ -214,7 +214,7 @@ async function processAddCommand(
 };
 
 async function runAction({ filePath, fileName, vsproj, bulkMode }: ActionArgs) {
-   const config = workspace.getConfiguration("vsproj")
+   const config = getGlobalConfig();
    const itemType = config.get<ItemType>('itemType', {
       '*': 'Content',
       '.js': 'Compile',
@@ -222,7 +222,7 @@ async function runAction({ filePath, fileName, vsproj, bulkMode }: ActionArgs) {
    })
    VsprojUtil.addFile(vsproj, filePath, getTypeForFile(fileName, itemType))
    if (!bulkMode) {
-      await VsprojUtil.persist(vsproj)
+      await saveVsProj(vsproj);
    }
    return true;
 }
@@ -256,7 +256,7 @@ async function vsprojAddDirectory(this: vscode.ExtensionContext, fsPath: string)
    }
 
    for (const vsproj of changedVsprojs)
-      VsprojUtil.persist(vsproj);
+      await saveVsProj(vsproj);
 }
 
 // How do we actually tell if a directory or file was deleted?
@@ -323,11 +323,11 @@ function getTypeForFile(fileName: string, itemType: ItemType): string {
 }
 
 function isDesiredFile(globalState: vscode.Memento, queryPath: string) {
-   const config = workspace.getConfiguration('vsproj')
-
    const ignorePaths = globalState.get<string[]>('vsproj.ignorePaths') || []
    if (ignorePaths.indexOf(queryPath) > -1)
       return false
+
+   const config = getGlobalConfig();
 
    const includeRegex = config.get('includeRegex', '.*');
    //Global exclusions
@@ -379,7 +379,7 @@ async function vsprojRemoveCommand(
 
    try {
       const removed = await VsprojUtil.removeFile(vsproj, fsPath, wasDir)
-      await VsprojUtil.persist(vsproj)
+      await saveVsProj(vsproj);
       if (!removed && bulkMode !== true) {
          VsProjOutput.AppendLine(`${ fileName } was not found in ${ vsproj.name }`);
       }
@@ -403,4 +403,8 @@ async function getVsprojForFile(fsPath: string) {
       }
       return
    }
+}
+
+async function saveVsProj(vsproj: Vsproj) {
+   return await VsprojUtil.persist(vsproj, getGlobalConfig().get<string>('encoding'));
 }
