@@ -96,11 +96,10 @@ function getProjFileXmlEncoding(encoding: string) {
 export async function persist(vsproj: Vsproj, encoding: string = "ascii", indent = 2) {
    const xmlString = vsproj.xml.write({ indent, encoding: getProjFileXmlEncoding(encoding) })
 
-   // no newline at end of file
    const xmlFinal = (xmlString)
-      .replace(/(\r)?(\n)+$/, '');
-      //Error with this replace, is it usefull ?
-      // .replace(/(?<!\r)>\n/g, '\r\n') // use CRLF
+      .replace(/(?<!\r)\n/g, '\r\n') // use CRLF
+   // no newline at end of file ?
+   // .replace(/(\r)?(\n)+$/, '');
 
    //Removing Visual Studio read-only flag on this file so that we can write on it
    await fs.chmod(vsproj.fsPath, "777");

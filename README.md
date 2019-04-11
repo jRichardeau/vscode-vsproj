@@ -72,7 +72,7 @@ You can also ignore files by workspace with the `exclude` setting described abov
 
 ## Release Notes
 
-### Most Recent Release (1.2.0)
+### Most Recent Release (1.2.1)
 
 #### Release 1.2.0
 
